@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"net/http"
+	"time"
 
 	"github.com/anboo/throttler/service/storage"
 	"github.com/pkg/errors"
@@ -25,16 +26,14 @@ func NewHttpClient(rateLimiter *rate.Limiter, logger *zerolog.Logger) *HttpClien
 }
 
 func (c *HttpClient) Request(ctx context.Context, r storage.Request) error {
-	if !c.rateLimiter.Allow() {
-		c.logger.Warn().Str("request", r.ID).Msg("rate limit reached maximum number of requests")
-	} else {
-		c.logger.Info().Str("request", r.ID).Msg("call request")
-	}
+	start := time.Now()
 
 	err := c.rateLimiter.Wait(ctx)
 	if err != nil {
 		return errors.Wrap(err, "http client wait rate limiter")
 	}
+	
+	c.logger.Info().Str("request", r.ID).Str("rate_limit_wait", time.Since(start).String()).Msg("call request")
 
 	req, err := http.NewRequest("GET", "google.com", nil)
 	if err != nil {

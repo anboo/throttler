@@ -1,18 +1,11 @@
 package resource
 
 import (
-	"context"
 	"log"
-	"time"
+	"runtime"
 
 	"github.com/anboo/throttler/service/storage"
 )
-
-type ENV struct {
-	DatabaseDSN              string        `env:"DB_DSN"`
-	RequestsLimitPerInterval time.Duration `env:"REQUESTS_LIMIT_PER_INTERVAL"`
-	RequestsLimit            int           `env:"REQUESTS_INTERVAL"`
-}
 
 type Resources struct {
 	Storage storage.Storage
@@ -21,11 +14,13 @@ type Resources struct {
 
 func NewResources() *Resources {
 	return &Resources{
-		Env: &ENV{},
+		Env: &ENV{
+			WorkersSize: runtime.GOMAXPROCS(0),
+		},
 	}
 }
 
-func (r *Resources) Initialize(ctx context.Context) {
+func (r *Resources) Initialize() {
 	err := r.initEnv()
 	if err != nil {
 		log.Fatalln(err)

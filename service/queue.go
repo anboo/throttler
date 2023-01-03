@@ -11,17 +11,22 @@ import (
 )
 
 type Queue struct {
-	group      *errgroup.Group
-	once       *sync.Once
-	workers    int
+	checkingInterval time.Duration
+
+	group   *errgroup.Group
+	once    *sync.Once
+	workers int
+	queue   chan storage.Request
+
 	storage    storage.Storage
-	queue      chan storage.Request
 	httpClient *HttpClient
-	logger     *zerolog.Logger
+
+	logger *zerolog.Logger
 }
 
 func NewQueue(
 	ctx context.Context,
+	checkingInterval time.Duration,
 	httpClient *HttpClient,
 	workers int,
 	db storage.Storage,
@@ -31,13 +36,14 @@ func NewQueue(
 	group.SetLimit(workers)
 
 	return &Queue{
-		group:      group,
-		once:       &sync.Once{},
-		httpClient: httpClient,
-		workers:    workers,
-		queue:      make(chan storage.Request, workers),
-		storage:    db,
-		logger:     logger,
+		group:            group,
+		once:             &sync.Once{},
+		httpClient:       httpClient,
+		workers:          workers,
+		checkingInterval: checkingInterval,
+		queue:            make(chan storage.Request, workers),
+		storage:          db,
+		logger:           logger,
 	}
 }
 
@@ -54,7 +60,9 @@ func (q *Queue) reserveRequest(ctx context.Context) {
 }
 
 func (q *Queue) Start(ctx context.Context) {
-	timer := time.NewTicker(1 * time.Second)
+	timer := time.NewTicker(q.checkingInterval)
+
+	q.logger.Info().Str("interval", q.checkingInterval.String()).Int("workers", q.workers).Msg("start queue")
 
 	go func() {
 		for {
@@ -87,10 +95,7 @@ func (q *Queue) consuming(ctx context.Context) {
 	for {
 		select {
 		case req := <-q.queue:
-			q.group.Go(func() error {
-				time.Sleep(1 * time.Minute)
-				return q.httpClient.Request(ctx, req)
-			})
+			q.httpClient.Request(ctx, req)
 		case <-ctx.Done():
 			q.logger.Warn().Msg("try graceful shutdown queue")
 			q.shutdown()

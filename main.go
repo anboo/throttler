@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"os/signal"
+	"runtime"
 	"syscall"
 	"time"
 
@@ -21,11 +22,23 @@ func main() {
 	l := zerolog.New(zerolog.NewConsoleWriter())
 
 	res := resource.NewResources()
-	res.Initialize(ctx)
+	res.Initialize()
 
-	rateLimiter := rate.NewLimiter(rate.Every(res.Env.RequestsLimitPerInterval/time.Duration(res.Env.RequestsLimit)), res.Env.RequestsLimit)
+	rateLimiter := rate.NewLimiter(
+		rate.Every(res.Env.RequestsLimitPerInterval/time.Duration(res.Env.RequestsLimit)),
+		res.Env.RequestsLimit,
+	)
+
 	httpClient := service.NewHttpClient(rateLimiter, &l)
-	queue := service.NewQueue(ctx, httpClient, 10, res.Storage, &l)
+
+	queue := service.NewQueue(
+		ctx,
+		res.Env.IntervalCheckingNewRequests,
+		httpClient,
+		runtime.GOMAXPROCS(0),
+		res.Storage,
+		&l,
+	)
 
 	createRequestHandler := api.NewCreateRequestHandler(res.Storage)
 	getRequestHandler := api.NewGetRequestHandler(res.Storage)
