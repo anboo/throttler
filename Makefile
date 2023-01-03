@@ -2,5 +2,8 @@
 include .env
 export $(shell sed 's/=.*//' .env)
 
-run:
+docker-run:
+	docker-compose up --build
+
+gorun:
 	go build -o ./throttler ./ && ./throttler

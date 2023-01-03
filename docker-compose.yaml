@@ -7,4 +7,15 @@ services:
       POSTGRES_PASSWORD: "pass"
       POSTGRES_DB: "db"
     ports:
-      - "5434:5432"
+      - "${POSTGRESQL_PORT:-5432}:5432"
+
+  app:
+    build: .
+    links:
+      - db
+    ports:
+      - "${HTTP_PORT:-8080}:8080"
+    env_file:
+      - .env
+    environment:
+      DB_DSN: "host=db user=postgres password=pass dbname=db port=5434 sslmode=disable"
