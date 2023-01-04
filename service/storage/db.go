@@ -18,7 +18,7 @@ func NewDatabaseStorage(db *gorm.DB) *DatabaseStorage {
 	return &DatabaseStorage{db: db}
 }
 
-func (d DatabaseStorage) ByID(ctx context.Context, id string) (Request, error) {
+func (d *DatabaseStorage) ByID(ctx context.Context, id string) (Request, error) {
 	var res Request
 	err := d.db.WithContext(ctx).First(&res, "id = ?", id).Error
 	switch {
@@ -30,7 +30,7 @@ func (d DatabaseStorage) ByID(ctx context.Context, id string) (Request, error) {
 	return res, nil
 }
 
-func (d DatabaseStorage) Create(ctx context.Context, request Request) (Request, error) {
+func (d *DatabaseStorage) Create(ctx context.Context, request Request) (Request, error) {
 	request.ID = uuid.New().String()
 	request.Status = StatusNew
 	request.CreatedAt = time.Now()
@@ -43,7 +43,7 @@ func (d DatabaseStorage) Create(ctx context.Context, request Request) (Request, 
 	return request, nil
 }
 
-func (d DatabaseStorage) ReserveRequestForQueue(ctx context.Context, limit int) ([]Request, error) {
+func (d *DatabaseStorage) ReserveRequestForQueue(ctx context.Context, limit int) ([]Request, error) {
 	var res []Request
 
 	subQuery := d.db.Model(Request{}).Clauses(
@@ -66,4 +66,12 @@ func (d DatabaseStorage) ReserveRequestForQueue(ctx context.Context, limit int) 
 	}
 
 	return res, nil
+}
+
+func (d *DatabaseStorage) UpdateStatus(ctx context.Context, id string, status Status) error {
+	err := d.db.WithContext(ctx).Model(&Request{}).Where("id = ?", id).Update("status", status).Error
+	if err != nil {
+		return errors.Wrap(err, "update status")
+	}
+	return nil
 }

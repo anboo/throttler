@@ -5,5 +5,5 @@ export $(shell sed 's/=.*//' .env)
 docker-run:
 	docker-compose up --build
 
-gorun:
+go-run:
 	go build -o ./throttler ./ && ./throttler

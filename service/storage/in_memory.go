@@ -68,3 +68,17 @@ func (i *InMemory) ReserveRequestForQueue(ctx context.Context, limit int) ([]Req
 
 	return res, nil
 }
+
+func (i *InMemory) UpdateStatus(ctx context.Context, id string, status Status) error {
+	i.lock.Lock()
+	defer i.lock.Unlock()
+
+	for j, r := range i.requests {
+		if r.ID == id {
+			i.requests[j].Status = status
+			return nil
+		}
+	}
+
+	return nil
+}

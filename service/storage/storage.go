@@ -30,4 +30,5 @@ type Storage interface {
 	ByID(ctx context.Context, id string) (Request, error)
 	Create(ctx context.Context, request Request) (Request, error)
 	ReserveRequestForQueue(ctx context.Context, limit int) ([]Request, error)
+	UpdateStatus(ctx context.Context, id string, status Status) error
 }
