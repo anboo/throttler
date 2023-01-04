@@ -99,9 +99,16 @@ func (d *DatabaseStorage) RequeueIdleRequests(ctx context.Context, interval time
 }
 
 func (d *DatabaseStorage) RunQueueHealthCheck(ctx context.Context, workerId string) error {
-	err := d.db.WithContext(ctx).Model(&Worker{}).Where("id = ?", workerId).Update("last_ping_at", time.Now().Unix()).Error
+	lastPingAt := int(time.Now().Unix())
+
+	err := d.db.WithContext(ctx).Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "id"}},
+		DoUpdates: clause.Assignments(map[string]interface{}{"last_ping_at": lastPingAt}),
+	}).Create(&Worker{ID: workerId, LastPingAt: lastPingAt}).Error
+
 	if err != nil {
 		return errors.Wrap(err, "try health check scenario")
 	}
+
 	return nil
 }

@@ -150,7 +150,7 @@ func (q *Queue) consuming(ctx context.Context) {
 				status = storage.StatusSuccess
 			}
 
-			err = q.storage.UpdateStatus(ctx, req.ID, status)
+			err = q.storage.UpdateStatus(context.Background(), req.ID, status)
 			if err != nil {
 				q.logger.Err(err).Str("status", string(status)).Msg("try update status")
 			}
