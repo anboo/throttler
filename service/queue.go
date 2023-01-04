@@ -6,12 +6,16 @@ import (
 	"time"
 
 	"github.com/anboo/throttler/service/storage"
+	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 	"golang.org/x/sync/errgroup"
 )
 
 type Queue struct {
-	checkingInterval time.Duration
+	id string
+
+	checkingInterval    time.Duration
+	healthCheckInterval time.Duration
 
 	group   *errgroup.Group
 	once    *sync.Once
@@ -27,6 +31,7 @@ type Queue struct {
 func NewQueue(
 	ctx context.Context,
 	checkingInterval time.Duration,
+	healthCheckInterval time.Duration,
 	httpClient *HttpClient,
 	workers int,
 	db storage.Storage,
@@ -36,19 +41,21 @@ func NewQueue(
 	group.SetLimit(workers)
 
 	return &Queue{
-		group:            group,
-		once:             &sync.Once{},
-		httpClient:       httpClient,
-		workers:          workers,
-		checkingInterval: checkingInterval,
-		queue:            make(chan storage.Request, workers),
-		storage:          db,
-		logger:           logger,
+		id:                  uuid.New().String(),
+		group:               group,
+		once:                &sync.Once{},
+		httpClient:          httpClient,
+		workers:             workers,
+		checkingInterval:    checkingInterval,
+		healthCheckInterval: healthCheckInterval,
+		queue:               make(chan storage.Request, workers),
+		storage:             db,
+		logger:              logger,
 	}
 }
 
 func (q *Queue) reserveRequest(ctx context.Context) {
-	reqs, err := q.storage.ReserveRequestForQueue(ctx, q.workers)
+	reqs, err := q.storage.ReserveRequestForQueue(ctx, q.id, q.workers)
 	if err != nil {
 		q.logger.Err(err).Msg("try reserve requests for queue")
 		return
@@ -68,9 +75,41 @@ func (q *Queue) reserveRequest(ctx context.Context) {
 }
 
 func (q *Queue) Start(ctx context.Context) {
-	timer := time.NewTicker(q.checkingInterval)
+	q.startCheckingNewRequests(ctx)
+	q.startHealthChecking(ctx)
+}
 
-	q.logger.Info().Str("interval", q.checkingInterval.String()).Int("workers", q.workers).Msg("start queue")
+func (q *Queue) startHealthChecking(ctx context.Context) {
+	ticker := time.NewTicker(q.healthCheckInterval)
+
+	go func() {
+		for {
+			err := q.storage.RunQueueHealthCheck(ctx, q.id)
+			if err != nil {
+				q.logger.Err(err).Msg("try worker ping")
+			}
+
+			err = q.storage.RequeueIdleRequests(ctx, q.healthCheckInterval)
+			if err != nil {
+				q.logger.Err(err).Msg("try requeue idle tasks")
+			}
+
+			select {
+			case <-ticker.C:
+				continue
+			case <-ctx.Done():
+				ticker.Stop()
+				q.logger.Warn().Msg("close")
+				return
+			}
+		}
+	}()
+}
+
+func (q *Queue) startCheckingNewRequests(ctx context.Context) {
+	ticker := time.NewTicker(q.checkingInterval)
+
+	q.logger.Info().Str("worker", q.id).Str("interval", q.checkingInterval.String()).Int("workers", q.workers).Msg("start queue")
 
 	go func() {
 		for {
@@ -78,10 +117,10 @@ func (q *Queue) Start(ctx context.Context) {
 			q.reserveRequest(ctx)
 
 			select {
-			case <-timer.C:
+			case <-ticker.C:
 				continue
 			case <-ctx.Done():
-				timer.Stop()
+				ticker.Stop()
 				q.logger.Warn().Msg("close")
 				return
 			}
@@ -96,7 +135,6 @@ func (q *Queue) Start(ctx context.Context) {
 			return nil
 		})
 	}
-	consumerGroup.Wait()
 }
 
 func (q *Queue) consuming(ctx context.Context) {

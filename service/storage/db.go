@@ -43,7 +43,7 @@ func (d *DatabaseStorage) Create(ctx context.Context, request Request) (Request,
 	return request, nil
 }
 
-func (d *DatabaseStorage) ReserveRequestForQueue(ctx context.Context, limit int) ([]Request, error) {
+func (d *DatabaseStorage) ReserveRequestForQueue(ctx context.Context, workerId string, limit int) ([]Request, error) {
 	var res []Request
 
 	subQuery := d.db.Model(Request{}).Clauses(
@@ -56,9 +56,10 @@ func (d *DatabaseStorage) ReserveRequestForQueue(ctx context.Context, limit int)
 	err := d.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		return d.db.Model(&res).Clauses(clause.Returning{}).Where(
 			"id IN (?)", subQuery,
-		).Update(
-			"status", StatusInProgress,
-		).Error
+		).Updates(map[string]interface{}{
+			"status":    StatusInProgress,
+			"worker_id": workerId,
+		}).Error
 	})
 
 	if err != nil {
@@ -72,6 +73,35 @@ func (d *DatabaseStorage) UpdateStatus(ctx context.Context, id string, status St
 	err := d.db.WithContext(ctx).Model(&Request{}).Where("id = ?", id).Update("status", status).Error
 	if err != nil {
 		return errors.Wrap(err, "update status")
+	}
+	return nil
+}
+
+func (d *DatabaseStorage) RequeueIdleRequests(ctx context.Context, interval time.Duration) error {
+	subQuery := d.db.Model(&Worker{}).Select("id").Where("? - last_ping_at >= ? * 1.5", time.Now().Unix(), interval.Seconds())
+
+	err := d.db.WithContext(ctx).Model(&Request{}).Where(
+		"worker_id IN (?) AND status NOT IN (?)",
+		subQuery,
+		CompletedStatuses,
+	).Update("status", StatusNew).Error
+
+	if err != nil {
+		return errors.Wrap(err, "try reset status to new")
+	}
+
+	err = d.db.Where("id IN (?)", subQuery).Delete(&Worker{}).Error
+	if err != nil {
+		return errors.Wrap(err, "reset idle tasks remove workers")
+	}
+
+	return nil
+}
+
+func (d *DatabaseStorage) RunQueueHealthCheck(ctx context.Context, workerId string) error {
+	err := d.db.WithContext(ctx).Model(&Worker{}).Where("id = ?", workerId).Update("last_ping_at", time.Now().Unix()).Error
+	if err != nil {
+		return errors.Wrap(err, "try health check scenario")
 	}
 	return nil
 }

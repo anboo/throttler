@@ -28,11 +28,13 @@ func main() {
 	queue := service.NewQueue(
 		ctx,
 		res.Env.IntervalCheckingNewRequests,
+		res.Env.HealthCheckInterval,
 		httpClient,
 		runtime.GOMAXPROCS(0),
 		res.Storage,
 		&l,
 	)
+	queue.Start(ctx)
 
 	createRequestHandler := api.NewCreateRequestHandler(res.Storage)
 	getRequestHandler := api.NewGetRequestHandler(res.Storage)
@@ -42,9 +44,7 @@ func main() {
 	r.GET("/request/:id", getRequestHandler.Handler)
 
 	srv := &http.Server{Addr: ":8080", Handler: r}
-	go func() {
-		queue.Start(ctx)
-	}()
+
 	go func() {
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("listen: %s\n", err)

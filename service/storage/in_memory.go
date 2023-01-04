@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"sync"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -43,7 +44,7 @@ func (i *InMemory) Create(ctx context.Context, request Request) (Request, error)
 	return request, nil
 }
 
-func (i *InMemory) ReserveRequestForQueue(ctx context.Context, limit int) ([]Request, error) {
+func (i *InMemory) ReserveRequestForQueue(ctx context.Context, workerId string, limit int) ([]Request, error) {
 	i.lock.RLock()
 	defer i.lock.RUnlock()
 
@@ -80,5 +81,13 @@ func (i *InMemory) UpdateStatus(ctx context.Context, id string, status Status) e
 		}
 	}
 
+	return nil
+}
+
+func (i *InMemory) RequeueIdleRequests(ctx context.Context, interval time.Duration) error {
+	return nil
+}
+
+func (i *InMemory) RunQueueHealthCheck(ctx context.Context, workerId string) error {
 	return nil
 }

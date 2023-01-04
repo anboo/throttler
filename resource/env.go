@@ -14,6 +14,7 @@ type ENV struct {
 	RequestsLimit               int           `env:"RATE_LIMIT_REQUESTS_INTERVAL,required" envDefault:"100"`
 	IntervalCheckingNewRequests time.Duration `env:"QUEUE_INTERVAL_CHECKING_NEW_REQUESTS,required" envDefault:"1s"`
 	WorkersSize                 int           `env:"QUEUE_WORKERS_SIZE"`
+	HealthCheckInterval         time.Duration `env:"QUEUE_HEALTH_CHECK_INTERVAL" envDefault:"15s"`
 }
 
 func (r *Resources) initEnv() error {
