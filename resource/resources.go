@@ -4,12 +4,14 @@ import (
 	"log"
 	"runtime"
 
+	"github.com/anboo/throttler/service"
 	"github.com/anboo/throttler/service/storage"
 )
 
 type Resources struct {
-	Storage storage.Storage
-	Env     *ENV
+	Storage     storage.Storage
+	RateLimiter service.RateLimiter
+	Env         *ENV
 }
 
 func NewResources() *Resources {
@@ -27,6 +29,11 @@ func (r *Resources) Initialize() {
 	}
 
 	err = r.initStorage()
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	err = r.initRateLimiter()
 	if err != nil {
 		log.Fatalln(err)
 	}

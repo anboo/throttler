@@ -14,7 +14,6 @@ import (
 	"github.com/anboo/throttler/service"
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog"
-	"golang.org/x/time/rate"
 )
 
 func main() {
@@ -24,12 +23,7 @@ func main() {
 	res := resource.NewResources()
 	res.Initialize()
 
-	rateLimiter := rate.NewLimiter(
-		rate.Every(res.Env.RequestsLimitPerInterval/time.Duration(res.Env.RequestsLimit)),
-		res.Env.RequestsLimit,
-	)
-
-	httpClient := service.NewHttpClient(rateLimiter, &l)
+	httpClient := service.NewHttpClient(res.RateLimiter, &l)
 
 	queue := service.NewQueue(
 		ctx,

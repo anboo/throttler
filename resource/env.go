@@ -9,6 +9,7 @@ import (
 
 type ENV struct {
 	DatabaseDSN                 string        `env:"DB_DSN"`
+	RateLimitStrategy           string        `env:"RATE_LIMIT_STRATEGY" envDefault:"realtime"`
 	RequestsLimitPerInterval    time.Duration `env:"RATE_LIMIT_REQUESTS_LIMIT_PER_INTERVAL,required" envDefault:"1m"`
 	RequestsLimit               int           `env:"RATE_LIMIT_REQUESTS_INTERVAL,required" envDefault:"100"`
 	IntervalCheckingNewRequests time.Duration `env:"QUEUE_INTERVAL_CHECKING_NEW_REQUESTS,required" envDefault:"1s"`
