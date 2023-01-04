@@ -48,7 +48,7 @@ func (i *InMemory) ReserveRequestForQueue(ctx context.Context, limit int) ([]Req
 	defer i.lock.RUnlock()
 
 	var (
-		res = make([]Request, limit)
+		res []Request
 		j   = 0
 	)
 

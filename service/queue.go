@@ -55,7 +55,15 @@ func (q *Queue) reserveRequest(ctx context.Context) {
 	}
 
 	for _, r := range reqs {
-		q.queue <- r
+		select {
+		case <-ctx.Done():
+			err := q.storage.UpdateStatus(context.Background(), r.ID, storage.StatusNew)
+			if err != nil {
+				q.logger.Err(err).Msg("shutdown cancel reservation")
+			}
+		default:
+			q.queue <- r
+		}
 	}
 }
 
