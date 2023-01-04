@@ -4,7 +4,7 @@
 # Запуск
 Make:
 ```
-make gorun #через локальный go
+make go-run #через локальный go
 make docker-run #через docker-compose
 ```
 Вручную через docker-compose:
