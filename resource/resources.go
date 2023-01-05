@@ -6,9 +6,11 @@ import (
 
 	"github.com/anboo/throttler/service"
 	"github.com/anboo/throttler/service/storage"
+	"gorm.io/gorm"
 )
 
 type Resources struct {
+	Db          *gorm.DB
 	Storage     storage.Storage
 	RateLimiter service.RateLimiter
 	Env         *ENV

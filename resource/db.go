@@ -18,6 +18,7 @@ func (r *Resources) initStorage() error {
 		if err != nil {
 			return errors.Wrap(err, "init storage gorm connect")
 		}
+		r.Db = db
 
 		sqlDB, err := db.DB()
 		if err != nil {
