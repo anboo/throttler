@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/anboo/throttler/service/rate_limiter"
 	"github.com/anboo/throttler/service/storage"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
@@ -12,11 +13,11 @@ import (
 
 type HttpClient struct {
 	httpClient  *http.Client
-	rateLimiter RateLimiter
+	rateLimiter rate_limiter.RateLimiter
 	logger      *zerolog.Logger
 }
 
-func NewHttpClient(rateLimiter RateLimiter, logger *zerolog.Logger) *HttpClient {
+func NewHttpClient(rateLimiter rate_limiter.RateLimiter, logger *zerolog.Logger) *HttpClient {
 	return &HttpClient{
 		httpClient:  http.DefaultClient,
 		rateLimiter: rateLimiter,

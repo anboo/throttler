@@ -4,7 +4,7 @@ import (
 	"log"
 	"runtime"
 
-	"github.com/anboo/throttler/service"
+	"github.com/anboo/throttler/service/rate_limiter"
 	"github.com/anboo/throttler/service/storage"
 	"gorm.io/gorm"
 )
@@ -12,7 +12,7 @@ import (
 type Resources struct {
 	Db          *gorm.DB
 	Storage     storage.Storage
-	RateLimiter service.RateLimiter
+	RateLimiter rate_limiter.RateLimiter
 	Env         *ENV
 }
 

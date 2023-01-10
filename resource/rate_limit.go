@@ -5,15 +5,14 @@ import (
 	"log"
 	"time"
 
-	"github.com/anboo/throttler/service"
-	database_rate "github.com/anboo/throttler/service/rate"
+	"github.com/anboo/throttler/service/rate_limiter"
 	"golang.org/x/time/rate"
 )
 
 func (r *Resources) initRateLimiter() error {
 	switch r.Env.RateLimitStrategy {
 	case "realtime":
-		r.RateLimiter = service.NewRealtimeRateLimiter(r.Env.RequestsLimit, r.Env.RequestsLimitPerInterval)
+		r.RateLimiter = rate_limiter.NewRealtimeRateLimiter(r.Env.RequestsLimit, r.Env.RequestsLimitPerInterval)
 		break
 	case "linear":
 		r.RateLimiter = rate.NewLimiter(
@@ -25,7 +24,7 @@ func (r *Resources) initRateLimiter() error {
 		if r.Db == nil {
 			log.Fatal("for database limiter need use postgres storage")
 		}
-		r.RateLimiter = database_rate.NewDatabaseRateLimiter(
+		r.RateLimiter = rate_limiter.NewDatabaseRateLimiter(
 			r.Db,
 			r.Env.RequestsLimit,
 			r.Env.RequestsLimitPerInterval,
